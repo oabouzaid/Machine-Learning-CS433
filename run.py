@@ -2,79 +2,14 @@ from proj1_helpers import *
 from implementations import *
 
 
-def error(y, tx, w):
-    '''
-    Calculates the error in the current prediction.
-    '''
-    return y - np.dot(tx, w)
+# Constants for importing training and testing data
+TRAINING_DATA = '/Users/Gaurav/Desktop/train.csv'
+TEST_DATA = '/Users/Gaurav/Desktop/test.csv'
 
-
-def compute_loss(y, tx, w):
-    '''
-    Calculates the loss using MSE.
-    '''
-    N = y.shape[0]
-    e = error(y, tx, w)
-    factor = 1/(2*N)
-    loss = (np.dot(np.transpose(e), e)) * factor
-    return loss
-
-
-def compute_gradient(y, tx, w):
-    '''
-    Computes the gradient of the MSE loss function.
-    '''
-    N = y.shape[0]
-    e = error(y, tx, w)
-    factor = -1/N
-    grad = (np.dot(np.transpose(tx), e)) * factor
-    loss = compute_loss(y, tx, w)
-    return grad, loss
-
-
-def compute_stoch_gradient(y, tx, w):
-    '''
-    Computes the stochastic gradient from a few examples of n and their corresponding y_n labels.
-    '''
-    N = y.shape[0]
-    e = error(y, tx, w)
-    factor = -1/N
-    grad = (np.dot(np.transpose(tx), e)) * factor
-    loss = compute_loss(y, tx, w)
-    return grad, loss
-
-
-def sigma(x):
-    '''
-    Calculates sigma using the given formula.
-    '''
-    return np.exp(x)/(1+np.exp(x))
-
-
-def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
-    '''
-    Generates a minibatch iterator for a dataset.
-    Takes as input two iterables - the output desired values 'y' and the input data 'tx'.
-    Outputs an iterator which gives mini-batches of batch_size matching elements from y and tx.
-    Data can be randomly shuffled to avoid ordering in the original data messing with the randomness of the minibatches.
-    Example of use:
-    for minibatch_y, minibatch_tx in batch_iter(y, tx, 32):
-        do something
-    '''
-    data_size = len(y)
-
-    if shuffle:
-        shuffle_indices = np.random.permutation(np.arange(data_size))
-        shuffled_y = y[shuffle_indices]
-        shuffled_tx = tx[shuffle_indices]
-    else:
-        shuffled_y = y
-        shuffled_tx = tx
-    for batch_num in range(num_batches):
-        start_index = batch_num * batch_size
-        end_index = min((batch_num + 1) * batch_size, data_size)
-        if start_index != end_index:
-            yield shuffled_y[start_index:end_index], shuffled_tx[start_index:end_index]
+# Constants used to clean data
+SPLIT_PERCENT = 0.80
+DEGREE = 13
+LAMBDA_ = 0.9
 
             
 def compare_prediction(w_train, x, y):
@@ -207,3 +142,123 @@ def get_id_buckets(x):
         result.append(xi_defined)
         result.append(xi_undefined)
     return result
+
+
+print("Loading data from train = " + TRAINING_DATA + " test = " + TEST_DATA)
+
+# Load csv training and testing data
+ty, tx, ids_train = load_csv_data(TRAINING_DATA, sub_sample = False)
+fy, fx, ids_test = load_csv_data(TEST_DATA, sub_sample = False)
+
+print("Completed loading data.")
+
+# Backup of the imported training and testing data
+orig_tx = tx.copy()
+orig_ty = ty.copy()
+orig_fx = fx.copy()
+
+
+print("Partition into buckets, clean data, standardize, build polynomial, add intercept.")
+
+# Split data into 80-20 and use 80 for training and 20 to check model accuracy
+x_train, y_train, x_test, y_test = split_data(orig_tx.copy(), orig_ty.copy(), SPLIT_PERCENT, seed=1)
+
+# Split final test data to make predictions on into buckets
+fx_train = orig_fx.copy()
+fx_buckets = get_buckets(fx_train)
+
+# Append y values as column to later divide y into buckets corresponding with x values
+x_train = np.column_stack((x_train, y_train))
+x_test = np.column_stack((x_test, y_test))
+
+# Split training x into buckets
+buckets = get_buckets(x_train)
+
+# Split testing y into buckets corresponding to x values
+y_buckets = []
+for i in range(len(buckets)):
+    y_buckets.append(buckets[i][:,-1])
+    buckets[i] = np.delete(buckets[i], -1, 1)
+
+# Split testing x into buckets
+test_buckets = get_buckets(x_test)
+
+# Split testing y into buckets corresponding to x values
+test_y_buckets = []
+for i in range(len(test_buckets)):
+    test_y_buckets.append(test_buckets[i][:,-1])
+    test_buckets[i] = np.delete(test_buckets[i], -1, 1)
+
+# Replace -999 with NaN and standardize columns for each bucket
+for b in range(len(buckets)):
+    buckets[b] = replace_999_with_nan(buckets[b])
+    buckets[b] = standardize(buckets[b])
+    # buckets[b] = one_hot_encoding(buckets[b])
+    test_buckets[b] = replace_999_with_nan(test_buckets[b])
+    test_buckets[b] = standardize(test_buckets[b])
+    # test_buckets[b] = one_hot_encoding(test_buckets[b])
+    fx_buckets[b] = replace_999_with_nan(fx_buckets[b])
+    fx_buckets[b] = standardize(fx_buckets[b])
+    # fx_buckets[b] = one_hot_encoding(fx_buckets[b])
+    
+# Build polynomial of given degree for each bucket
+for b in range(len(buckets)):
+    buckets[b] = build_poly(buckets[b], DEGREE)
+    test_buckets[b] = build_poly(test_buckets[b], DEGREE)
+    fx_buckets[b] = build_poly(fx_buckets[b], DEGREE)
+
+# Add column of ones for intercept for each bucket
+for b in range(len(buckets)):
+    buckets[b] = np.column_stack((np.ones((buckets[b].shape[0], 1)), buckets[b]))
+    test_buckets[b] = np.column_stack((np.ones((test_buckets[b].shape[0], 1)), test_buckets[b]))
+    fx_buckets[b] = np.column_stack((np.ones((fx_buckets[b].shape[0], 1)), fx_buckets[b]))
+
+print("Applying ridge regression on each bucket.")
+
+
+# Calculate weights for each bucket separately
+weights = []
+for i in range(len(buckets)):
+    w_rr, loss_rr = ridge_regression(y_buckets[i], buckets[i], LAMBDA_)
+    weights.append(w_rr)
+
+# Compare predictions for each bucket using its corresponding weights found earlier
+correct_predictions = 0
+len_data = 0
+for i in range(len(buckets)):
+    rr_accuracy = compare_prediction(weights[i], test_buckets[i], test_y_buckets[i])
+    correct_predictions += (rr_accuracy * len(test_buckets[i]))
+    len_data += len(test_buckets[i])
+
+total_accuracy = correct_predictions / len_data
+
+print("Total Accuracy = " + str(total_accuracy) + " Degree = " + str(DEGREE) + " Lambda = " + str(LAMBDA_))
+
+
+# Create new array with Id, PRI_jet_num, and DER_mass_MMC for reordering predictions
+ids_array = ids_test
+pri_jet_num_col = orig_fx[:,22]
+der_mass_mmc_col = orig_fx[:,0]
+ids_array = np.column_stack((ids_array, pri_jet_num_col))
+ids_array = np.column_stack((ids_array, der_mass_mmc_col))
+
+# Divide Id into 8 buckets similar to input data
+id_buckets = get_id_buckets(ids_array)
+
+# Make predictions for each bucket using weights calculated by training on each bucket
+final_y = predict_labels(weights[0], fx_buckets[0])
+final_y = np.column_stack((final_y, id_buckets[0]))
+for i in range(1, len(weights)):
+    y_pred = predict_labels(weights[i], fx_buckets[i])
+    y_pred = np.column_stack((y_pred, id_buckets[i]))
+    final_y = np.concatenate((final_y, y_pred))
+    
+# Sort predictions based on Id
+final_y = final_y[final_y[:,1].argsort()]
+
+# Select only prediction values
+final_y = final_y[:,0]
+
+# Create output file containing predictions
+create_csv_submission(ids_test, final_y, "output.csv")
+print("Created output.csv with shape = " + str(final_y.shape))
