@@ -4,8 +4,6 @@
 <br />
 Logistic Depression
 
-**Important:** Prior to running the code, please indicate the location of the training data and testing data in the run.py script. The variables are specified as **TRAINING_DATA** and **TEST_DATA**. In order to receive the exact same output.csv as we have submitted on Kaggle, the computer should be running **Python 3.6.3**.
-=======
 **Team Members:**
 <br />
 Karunya Tota (karunya.tota@epfl.ch)
