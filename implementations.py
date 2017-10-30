@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from run import *
 
 def least_squares_GD(y, tx, initial_w, max_iters, gamma):
     '''
@@ -90,3 +89,78 @@ def reg_logistic_regression(y, tx, lambda_ , initial_w, max_iters, gamma):
         grad = np.dot(np.transpose(tx), sig) + (2 * lambda_*w)
         w = w - (gamma * grad)
     return w, loss
+
+
+def error(y, tx, w):
+    '''
+    Calculates the error in the current prediction.
+    '''
+    return y - np.dot(tx, w)
+
+
+def compute_loss(y, tx, w):
+    '''
+    Calculates the loss using MSE.
+    '''
+    N = y.shape[0]
+    e = error(y, tx, w)
+    factor = 1/(2*N)
+    loss = (np.dot(np.transpose(e), e)) * factor
+    return loss
+
+
+def compute_gradient(y, tx, w):
+    '''
+    Computes the gradient of the MSE loss function.
+    '''
+    N = y.shape[0]
+    e = error(y, tx, w)
+    factor = -1/N
+    grad = (np.dot(np.transpose(tx), e)) * factor
+    loss = compute_loss(y, tx, w)
+    return grad, loss
+
+
+def compute_stoch_gradient(y, tx, w):
+    '''
+    Computes the stochastic gradient from a few examples of n and their corresponding y_n labels.
+    '''
+    N = y.shape[0]
+    e = error(y, tx, w)
+    factor = -1/N
+    grad = (np.dot(np.transpose(tx), e)) * factor
+    loss = compute_loss(y, tx, w)
+    return grad, loss
+
+
+def sigma(x):
+    '''
+    Calculates sigma using the given formula.
+    '''
+    return np.exp(x)/(1+np.exp(x))
+
+
+def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
+    '''
+    Generates a minibatch iterator for a dataset.
+    Takes as input two iterables - the output desired values 'y' and the input data 'tx'.
+    Outputs an iterator which gives mini-batches of batch_size matching elements from y and tx.
+    Data can be randomly shuffled to avoid ordering in the original data messing with the randomness of the minibatches.
+    Example of use:
+    for minibatch_y, minibatch_tx in batch_iter(y, tx, 32):
+        do something
+    '''
+    data_size = len(y)
+
+    if shuffle:
+        shuffle_indices = np.random.permutation(np.arange(data_size))
+        shuffled_y = y[shuffle_indices]
+        shuffled_tx = tx[shuffle_indices]
+    else:
+        shuffled_y = y
+        shuffled_tx = tx
+    for batch_num in range(num_batches):
+        start_index = batch_num * batch_size
+        end_index = min((batch_num + 1) * batch_size, data_size)
+        if start_index != end_index:
+            yield shuffled_y[start_index:end_index], shuffled_tx[start_index:end_index]
