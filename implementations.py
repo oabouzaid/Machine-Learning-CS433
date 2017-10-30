@@ -55,12 +55,11 @@ def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
 
 
 def least_squares_GD(y, tx, initial_w, max_iters, gamma):
-    w = initial_w.copy() # ........ !!!
+    w = initial_w.copy() 
     for n_iter in range(max_iters):
         grad, loss = compute_gradient(y, tx ,w)
        #Update rule
         w = w - gamma * grad  
-        #print("Gradient Descent({bi}/{ti}): loss={l}, w0={w0}, w1={w1}".format(bi=n_iter, ti=max_iters - 1, l=loss, w0=w[0], w1=w[1]))
     return w, loss  
 
 
@@ -104,8 +103,6 @@ def sigma(x):
 
 #Logistic regression using gradient descent
 def logistic_regression(y, tx, initial_w, max_iters, gamma):
-    #if y.min == -1:
-    #    y = (y>0).astype(np.float64)
     w = initial_w
     for n_iter in range(max_iters):
         yx = np.dot(y, np.transpose(tx))
@@ -118,13 +115,11 @@ def logistic_regression(y, tx, initial_w, max_iters, gamma):
         grad = np.dot(np.transpose(xt), sig)
         w = w - gamma * grad 
         
-        ## at the last iteration, should the gradient be updated before or after the the update rule ???? 
     return w, loss 
 
 
 #Regularized logistic regression using gradient descent
 def reg_logistic_regression(y, tx, lambda_ , initial_w, max_iters, gamma):
-    #'a0Case y.min == -1
     w = initial_w
     for n_iter in range(max_iters):
         yx = np.dot(y, np.transpose(tx))
