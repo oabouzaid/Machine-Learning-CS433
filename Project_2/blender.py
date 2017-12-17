@@ -1,13 +1,12 @@
-import numpy as np
+import os.path
 from math import sqrt
+import numpy as np
 
 def blend(train_data, predictions):
-	print("=======================================================")
-	print("Blending models")
 
 	joint_file = "./data/train_predictions.csv"
 
-	# create_predictions(train_data, predictions, joint_file)
+	create_predictions(train_data, predictions, joint_file)
 
 	trainX, trainY, methods = load_predictions(joint_file)
 	
@@ -31,6 +30,10 @@ def create_predictions(train_data, predictions, joint_file):
 	Create a joint data file including the training data and their
 	corresponing predictions
 	"""
+
+	# if predictions are already created, skip
+	if os.path.exists(joint_file):
+		return
 
 	# write header row
 	file = open(joint_file, "w")
