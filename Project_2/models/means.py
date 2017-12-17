@@ -1,149 +1,113 @@
 from helpers import *
 
 
-def baseline_global_mean(train, test):
-    """baseline method: use the global mean."""
-    # find the non zero ratings in the train
-    nonzero_train = train[train.nonzero()]
+def calculate_global_mean(train, test, test_ratings):
+    """ Use the global mean as every prediction."""
 
-    # calculate the global mean
-    global_mean_train = nonzero_train.mean()
-
-    # find the non zero ratings in the test
-    nonzero_test = test[test.nonzero()].todense()
-
-    # predict the ratings as global mean
-    mse = calculate_mse(nonzero_test, global_mean_train)
-    rmse = np.sqrt(1.0 * mse / nonzero_test.shape[1])
-    print("test RMSE of baseline using the global mean: {v}.".format(v=rmse))
+    # find the nonzero train ratings
+    train_nz = train[train.nonzero()]
     
-    return global_mean_train, rmse[0]
+    # calculate the global mean of train_nz
+    global_mean = train_nz.mean()
+    
+    # find the training-test (0.1 split from train) ratings
+    test_nz = test[test.nonzero()].todense()
+
+    # calculate rmse between the training-test and the global mean
+    mse = calculate_mse(test_nz, global_mean)
+    rmse = np.sqrt(1.0 * mse/test_nz.shape[1])
+    
+    print("Test RMSE using the Global Mean: {s}".format(s=rmse))
+    
+    # generate predictions matrix for the test ratings
+    num_items = test_ratings.shape[0]
+    num_users = test_ratings.shape[1]
+    pred_global_mean = sp.lil_matrix((num_items, num_users))
+
+    for item in range(num_items):
+        for user in range(num_users):
+            pred_global_mean[item, user] = global_mean
+        
+    return pred_global_mean
 
 
-def baseline_user_mean(train, test):
-    """baseline method: use the user means as the prediction."""
+def calculate_user_mean(train, test, test_ratings):
+    """ Use the user means as predictions. """
     mse = 0
-    num_items, num_users = train.shape
-
-    for user_index in range(num_users):
-        # find the non-zero ratings for each user in the training dataset
-        train_ratings = train[:, user_index]
-        nonzeros_train_ratings = train_ratings[train_ratings.nonzero()]
-        
-        # calculate the mean if the number of elements is not 0
-        if nonzeros_train_ratings.shape[0] != 0:
-            user_train_mean = nonzeros_train_ratings.mean()
-        else:
-            continue
-        
-        # find the non-zero ratings for each user in the test dataset
-        test_ratings = test[:, user_index]
-        nonzeros_test_ratings = test_ratings[test_ratings.nonzero()].todense()
-        
-        # calculate the test error 
-        mse += calculate_mse(nonzeros_test_ratings, user_train_mean)
-        rmse = np.sqrt(1.0 * mse / test.nnz)
-    
-    print("test RMSE of the baseline using the user mean: {v}.".format(v=rmse))
-    
-    return user_train_mean, rmse[0]
-
-
-def baseline_item_mean(train, test):
-    """baseline method: use item means as the prediction."""
-    mse = 0
+    means = []
     num_items, num_users = train.shape
     
-    print(train.shape)
-    print(test.shape)
-
-    for item_index in range(num_items):
-        # find the non-zero ratings for each item in the training dataset
-        train_ratings = train[item_index, :]
-        nonzeros_train_ratings = train_ratings[train_ratings.nonzero()]
-
-        # calculate the mean if the number of elements is not 0
-        if nonzeros_train_ratings.shape[0] != 0:
-            item_train_mean = nonzeros_train_ratings.mean()
-        else:
-            continue
+    for user in range(num_users):
+        # find all nonzero ratings for the present user
+        user_train = train[:, user]
+        nz_train = user_train[user_train.nonzero()]
         
-        # find the non-zero ratings for each movie in the test dataset
-        test_ratings = test[item_index, :]
-        nonzeros_test_ratings = test_ratings[test_ratings.nonzero()].todense()
+        # calculate the user's average rating
+        if nz_train.shape[0] != 0:
+            user_mean = nz_train.mean()
+        else:
+            user_mean = 0.0
+            
+        means.append(user_mean)
+        
+        # find the test ratings from the train-test split
+        user_test = test[:, user]
+        nz_test = user_test[user_test.nonzero()].todense()
         
         # calculate the test error 
-        mse += calculate_mse(nonzeros_test_ratings, item_train_mean)
-    rmse = np.sqrt(1.0 * mse / test.nnz)
-    print("test RMSE of the baseline using the item mean: {v}.".format(v=rmse))
-
-    return item_train_mean, rmse[0]
-
-
-def calculate_global_mean(training_folds, test_folds):
-    pred_global_mean = []
-    rmse = 0.0
-    start = time.time()
-
-    for i in range(len(training_folds)):
-        pred, curr_rmse = baseline_global_mean(training_folds[i], test_folds[i])
-        pred_global_mean.append(pred)
-        rmse += curr_rmse
-
-    average_rmse = rmse/len(training_folds)
-    average_global_mean = np.mean(pred_global_mean)
-    
-    print('Average Folds RMSE: ' + str(average_rmse[0]))
-    print('Average Folds Global Mean: ' + str(average_global_mean))
-
-    end = time.time()
-    print('Elapsed time: ' + str((end - start)/60.0))
-    
-    return average_rmse, average_global_mean
-
-
-def calculate_user_mean(training_folds, test_folds):
-    pred_user_mean = []
-    rmse = 0.0
-    start = time.time()
-
-    for i in range(len(training_folds)):
-        pred, curr_rmse = baseline_user_mean(training_folds[i], test_folds[i])
-        pred_user_mean.append(pred)
-        rmse += curr_rmse
+        mse += calculate_mse(nz_test, user_mean)
         
-    average_rmse = rmse/len(training_folds)
-    average_user_mean = np.mean(pred_user_mean)
-
-    print('Average Folds RMSE: ' + str(average_rmse[0]))
-    print('Average Folds User Mean: ' + str(average_user_mean))
-
-    end = time.time()
-    print('Elapsed time: ' + str((end - start)/60.0))
+    rmse = np.sqrt(1.0 * mse/test.nnz)
+    print("Test RMSE using the User Mean: {s}".format(s=rmse))
     
-    return average_user_mean
-
-
-def calculate_item_mean(training_folds, test_folds):
-    pred_item_mean = []
-    rmse = 0.0
-    start = time.time()
-
-    print(len(training_folds))
-    print(len(test_folds))
-
-    for i in range(len(training_folds)):
-        pred, curr_rmse = baseline_item_mean(training_folds[i], test_folds[i])
-        pred_item_mean.append(pred)
-        rmse += curr_rmse
+    # generate predictions matrix for the test ratings
+    num_items = test_ratings.shape[0]
+    num_users = test_ratings.shape[1]
+    pred_user_mean = sp.lil_matrix((num_items, num_users))
+    
+    for item in range(num_items):
+        for user in range(num_users):
+            pred_user_mean[item, user] = means[user]
         
-    average_rmse = rmse/len(training_folds)
-    average_item_mean = np.mean(pred_item_mean)
+    return pred_user_mean
 
-    print('Average Folds RMSE: ' + str(average_rmse[0]))
-    print('Average Folds Item Mean: ' + str(average_item_mean))
 
-    end = time.time()
-    print('Elapsed time: ' + str((end - start)/60.0))
+def calculate_item_mean(train, test, test_ratings):
+    """ Use the item means as predictions. """
+    mse = 0
+    means = []
+    num_items, num_users = train.shape
     
-    return average_item_mean
+    for item in range(num_items):
+        # find all nonzero ratings for the item
+        item_train = train[item, :]
+        nz_train = item_train[item_train.nonzero()]
+        
+        # calculate the item's average rating
+        if nz_train.shape[0] != 0:
+            item_mean = nz_train.mean()
+        else:
+            item_mean = 0.0
+            
+        means.append(item_mean)
+        
+        # find the test ratings from the train-test split
+        item_test = test[item, :]
+        nz_test = item_test[item_test.nonzero()].todense()
+        
+        # calculate the test error 
+        mse += calculate_mse(nz_test, item_mean)
+   
+    rmse = np.sqrt(1.0 * mse/test.nnz)
+    print("Test RMSE using the Item Mean: {s}".format(s=rmse))
+    
+    # generate predictions matrix for the test ratings
+    num_items = test_ratings.shape[0]
+    num_users = test_ratings.shape[1]
+    pred_item_mean = sp.lil_matrix((num_items, num_users))
+    
+    for item in range(num_items):
+        for user in range(num_users):
+            pred_item_mean[item, user] = means[item]
+        
+    return pred_item_mean
