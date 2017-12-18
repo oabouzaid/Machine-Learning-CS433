@@ -49,7 +49,7 @@ def create_predictions(train_ratings, predictions):
 	models = list(predictions.keys())
 	line = []
 	for item, user in idx:
-		user_item_id = "r" + str(item) + "_" + "c" + str(user)
+		user_item_id = "r" + str(item + 1) + "_" + "c" + str(user + 1)
 		rating = str(train_ratings[item, user])
 
 		line.append(user_item_id)
