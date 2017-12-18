@@ -9,49 +9,52 @@ from helpers import *
 from models.means import *
 
 
-SELECTED_MODEL = "all_methods"
-PREDICTIONS_PATH = "./predictions/"
-PICKLE_PATH = "./pickles/"
-TRAIN_DATA = "./data/data_train.csv"
-TEST_DATA = "./data/sample_submission.csv"
-
 models = {
 	"global_mean": calculate_global_mean,
 	"user_mean": calculate_user_mean,
 	"item_mean": calculate_item_mean,
 }
 
+PICKLE_PATH = "./pickles/"
+PREDICTIONS_PATH = "./predictions/"
+TRAIN_DATA = "./data/data_train.csv"
+TEST_DATA = "./data/sample_submission.csv"
+
 
 def get_predictions(model, train, test, test_ratings):
 	return models[model](train, test, test_ratings)
 
 
-def accept_parameters(argv):
-	global SELECTED_MODEL, NUM_FOLDS
+def help_and_exit(err):
+	print(err)
+	print("[help]: python run.py -m <model name(s) separated by commas>")
+	print("available models: {}".format(", ".join(models.keys())))
+	print("default: all")
+	sys.exit()
 
+
+def get_selected_models(argv):
 	try:
-		opts, args = getopt.getopt(argv, "hm:",["model="])
-	except getopt.GetoptError:
-		print("[help]: run.py -m <model>")
-		sys.exit(2)
+		opts, args = getopt.getopt(argv, "m:")
+	except getopt.GetoptError as err:
+		help_and_exit(str(err))
 
 	for opt, arg in opts:
-		if opt == '-h':
-			print ("[help]: python run.py -m <model>")
-			print("available models: [global_mean, user_mean, item_mean]")
-			print("default: all")
-			sys.exit()
-		elif opt in ("-m", "--model"):
-			if arg not in models and arg != "all":
-				print("available models: [global_mean, user_mean, item_mean]")
-				print("default: all")
-				sys.exit()
-			SELECTED_MODEL = arg
+		if opt == "-m":
+			selected_models = arg.split(",")
+		else:
+			help_and_exit("option {} not recognized".format(opt))
+	
+	for selected_model in selected_models:
+		if selected_model not in models:
+			help_and_exit("model {} not in available models".format(selected_model))
+
+	return selected_models
 
 
 def load_data_from_pkl():
 	"""
-	Pickles training and testing data
+	Pickle train and test data
 	"""
 	train_pkl_path = PICKLE_PATH + "train.pkl"
 	test_pkl_path = PICKLE_PATH + "test.pkl"
@@ -95,57 +98,65 @@ def load_data_from_pkl():
 	
 	return train_ratings, test_ratings, train, test
 
-def run_model(SELECTED_MODEL, train, test, test_ratings, use_pkls=True):
+
+def run_model(selected_models, train, test, test_ratings, use_pkls=True):
 	"""
-	Runs the selected method
+	Run the selected model
 	"""
 	output_file = ""
 	prediction_pkl_path = PICKLE_PATH + "predictions.pkl"
 	predictions = {}
 
 	if os.path.exists(prediction_pkl_path):
+		print("=======================================================")
+		print("Loading predictions")
 		predictions_pkl = open(prediction_pkl_path, "rb")
 		predictions = pickle.load(predictions_pkl)
-
 	else:
-		run_models = models.keys() if SELECTED_MODEL == "all_methods" else [SELECTED_MODEL]
-
-		for model in run_models:
+		for selected_model in selected_models:
 			print("=======================================================")
-			print("Getting predictions for model = {}".format(model))
-			output_file = PREDICTIONS_PATH+"output_"+model+".csv"
-			predictions[model] = get_predictions(model, train, test, test_ratings)
-			create_csv_submission(TEST_DATA, output_file, predictions[model])
+			print("Running model = {}".format(model))
+			predictions[selected_model] = get_predictions(
+				selected_model,
+				train,
+				test,
+				test_ratings)
+			output_file = PREDICTIONS_PATH + "output_" + selected_model + ".csv"
+			create_csv_submission(TEST_DATA, output_file, predictions[selected_model])
 
 		predictions_pkl = open(prediction_pkl_path, "wb")
 		pickle.dump(predictions, predictions_pkl)
 
 	return predictions
 
-def main(argv):
-	accept_parameters(argv)
-	start = time.time()
 
+def main(argv):
 	print("=======================================================")
 	print("Starting Recommender")
 	print("=======================================================")
 
-	train_ratings, test_ratings, train, test = load_data_from_pkl()
-	
-	print("Running {}".format(SELECTED_MODEL))
+	selected_models = get_selected_models(argv)
+	print("Selected models: {}".format(", ".join(selected_models)))
 
-	predictions = run_model(SELECTED_MODEL, train, test, test_ratings, use_pkls=True)
+	start = time.time()
+
+	train_ratings, test_ratings, train, test = load_data_from_pkl()
+
+	predictions = run_model(selected_models, train, test, test_ratings, use_pkls=True)
 	
 	print("=======================================================")
 	print("Blending models")
+	print("=======================================================")
 
 	coeffs = blend(train, predictions)
 		
 	print("=======================================================")
 	print("Finished Running Recommender")
+	print("=======================================================")
+
 	end = time.time()
 	print('Elapsed time: {s} minutes'.format(s=str((end - start)/60.0)))
-	print("=======================================================")
+
 
 if __name__ == '__main__':
 	main(sys.argv[1:])
