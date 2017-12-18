@@ -7,12 +7,14 @@ from blender import *
 from data_helpers import *
 from helpers import *
 from models.means import *
+from models.als import *
 
 
 models = {
 	"global_mean": calculate_global_mean,
 	"user_mean": calculate_user_mean,
 	"item_mean": calculate_item_mean,
+	"als": calculate_als
 }
 
 PICKLE_PATH = "./pickles/"
@@ -22,7 +24,7 @@ TEST_DATA = "./data/sample_submission.csv"
 
 
 def get_predictions(model, train, test, test_ratings):
-	return models[model](train, test, test_ratings)
+	return models[model](train=train, test=test, test_ratings=test_ratings)
 
 
 def run_models(selected_models, train, test, test_ratings):
@@ -32,9 +34,10 @@ def run_models(selected_models, train, test, test_ratings):
 	predictions = {}
 
 	for model in selected_models:
-		pred_pkl_path = PREDICTIONS_PATH + "pred" + "_" + model + ".csv"
+		pred_pkl_path = PICKLE_PATH + "pred" + "_" + model + ".pkl"
 
 		if os.path.exists(pred_pkl_path):
+			print("Loading " + model + " model...")
 			current_pred = pickle.load(open(pred_pkl_path, "rb"))
 		else:
 			current_pred = get_predictions(
@@ -42,7 +45,7 @@ def run_models(selected_models, train, test, test_ratings):
 				train=train,
 				test=test,
 				test_ratings=test_ratings)
-			pickle.dump(predictions, open(pred_pkl_path, "wb"))
+			pickle.dump(current_pred, open(pred_pkl_path, "wb"))
 
 		predictions[model] = current_pred
 
@@ -55,6 +58,8 @@ def get_data():
 	"""
 	train_pkl_path = PICKLE_PATH + "train.pkl"
 	test_pkl_path = PICKLE_PATH + "test.pkl"
+	train_split_pkl_path = PICKLE_PATH + "train_split.pkl"
+	test_split_pkl_path = PICKLE_PATH + "test_split.pkl"
 
 	if os.path.exists(train_pkl_path):
 		print("Loading train data from path = {}".format(train_pkl_path))
@@ -72,7 +77,17 @@ def get_data():
 		test_ratings = load_data(path_dataset=TEST_DATA)
 		pickle.dump(test_ratings, open(test_pkl_path, "wb"))
 
-	train, test = split_data(ratings=train_ratings)
+	if os.path.exists(train_split_pkl_path) and os.path.exists(test_split_pkl_path):
+		print("Loading train_split_data from path = {}".format(train_split_pkl_path))
+		print("Loading test_split_data from path = {}".format(test_split_pkl_path))
+		train = pickle.load(open(train_split_pkl_path, "rb"))
+		test = pickle.load(open(test_split_pkl_path, "rb"))
+	else:
+		print("Splitting training data into 0.90 train and 0.10 test")
+		train, test = split_data(ratings=train_ratings)
+		pickle.dump(train, open(train_split_pkl_path, "wb"))
+		pickle.dump(test, open(test_split_pkl_path, "wb"))
+
 	
 	return train_ratings, test_ratings, train, test
 
@@ -91,11 +106,11 @@ def get_selected_models(argv):
 	except getopt.GetoptError as err:
 		help_and_exit(str(err))
 
+	selected_models = list(models.keys())
+
 	for opt, arg in opts:
 		if opt == "-m":
 			selected_models = arg.split(",")
-		else:
-			help_and_exit("option {} not recognized".format(opt))
 	
 	for selected_model in selected_models:
 		if selected_model not in models:
@@ -105,6 +120,7 @@ def get_selected_models(argv):
 
 
 def main(argv):
+
 	print("=======================================================")
 	print("Starting Recommender")
 	print("=======================================================")
@@ -123,6 +139,14 @@ def main(argv):
 	print("=======================================================")
 
 	coeffs = blend(train_ratings, predictions)
+	blended_path =  PREDICTIONS_PATH+"output_blended.csv"
+	
+	print("=======================================================")
+	print("Generating predictions at " + blended_path)
+	print("=======================================================")
+	
+	predictions_blended = blend_predictions(coeffs, predictions, test_ratings)
+	create_csv_submission(TEST_DATA, blended_path, predictions_blended)
 		
 	print("=======================================================")
 	print("Finished Running Recommender")

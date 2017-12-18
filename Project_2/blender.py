@@ -1,5 +1,8 @@
-from helpers import *
+import os.path
+from math import sqrt
+import numpy as np
 
+from helpers import *
 
 JOINT_FILE = "./predictions/train_predictions.csv"
 
@@ -7,12 +10,11 @@ JOINT_FILE = "./predictions/train_predictions.csv"
 def blend(train_ratings, predictions):
 	create_predictions(train_ratings, predictions)
 
-	trainX, trainY, models = load_predictions(joint_file)
+	trainX, trainY, models = load_predictions(JOINT_FILE)
 	
 	blended_rmse, weights = least_squares(trainX, trainY)
 
-	print("Blended RMSE: {s}".format(s=rmse))
-	print("Weights: " + " ".join(str(x) for x in weights))
+	print("Blended RMSE: {s}".format(s=blended_rmse))
 
 	coeffs = {}
 	for i in range(len(models)):
@@ -47,8 +49,10 @@ def create_predictions(train_ratings, predictions):
 
 	# write each true rating and predicted rating
 	models = list(predictions.keys())
-	line = []
+	
 	for item, user in idx:
+		line = []
+
 		user_item_id = "r" + str(item + 1) + "_" + "c" + str(user + 1)
 		rating = str(train_ratings[item, user])
 
@@ -73,10 +77,10 @@ def load_predictions(data_file):
 	"""
 	input = np.genfromtxt(data_file, delimiter=",", skip_header=1)
 	
-	trainX = input[:, 1]
-	trainX = np.expand_dims(trainX, axis=1)
+	trainY = input[:, 1]
+	trainY = np.expand_dims(trainY, axis=1)
 
-	trainY = input[:, 2:]
+	trainX = input[:, 2:]
 
 	file = open(data_file,'r')
 	methods = file.readline().strip()
@@ -95,3 +99,26 @@ def least_squares(trainX, trainY):
 	weights = np.ravel(w)
 
 	return blended_rmse, weights
+
+
+def blend_predictions(coeffs, predictions, test_ratings):
+	"""
+	Create the blended predictions for the test data
+	"""
+	
+	# # generate predictions matrix for the test ratings
+	num_items = test_ratings.shape[0]
+	num_users = test_ratings.shape[1]
+	models = list(predictions.keys())
+	pred_blended = sp.lil_matrix((num_items, num_users))
+
+	for item in range(num_items):
+		for user in range(num_users):
+			score = 0.0
+			for i in range(len(models)):
+				score += coeffs[models[i]] * predictions[models[i]][item, user]
+			score = max(score, 1.0)
+			score = min(score, 5.0)
+			pred_blended[item, user] = score
+
+	return pred_blended
