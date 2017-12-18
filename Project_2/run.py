@@ -25,6 +25,58 @@ def get_predictions(model, train, test, test_ratings):
 	return models[model](train, test, test_ratings)
 
 
+def run_models(selected_models, train, test, test_ratings):
+	"""
+	Run the selected model
+	"""
+	predictions = {}
+
+	for model in selected_models:
+		pred_pkl_path = PREDICTIONS_PATH + "pred" + "_" + model + ".csv"
+
+		if os.path.exists(pred_pkl_path):
+			current_pred = pickle.load(open(pred_pkl_path, "rb"))
+		else:
+			current_pred = get_predictions(
+				model=model,
+				train=train,
+				test=test,
+				test_ratings=test_ratings)
+			pickle.dump(predictions, open(pred_pkl_path, "wb"))
+
+		predictions[model] = current_pred
+
+	return predictions
+
+
+def get_data():
+	"""
+	Pickle train and test data
+	"""
+	train_pkl_path = PICKLE_PATH + "train.pkl"
+	test_pkl_path = PICKLE_PATH + "test.pkl"
+
+	if os.path.exists(train_pkl_path):
+		print("Loading train data from path = {}".format(train_pkl_path))
+		train_ratings = pickle.load(open(train_pkl_path, "rb"))
+	else:
+		print("Loading train data from path = {}".format(TRAIN_DATA))
+		train_ratings = load_data(path_dataset=TRAIN_DATA)
+		pickle.dump(train_ratings, open(train_pkl_path, "wb"))
+
+	if os.path.exists(test_pkl_path):
+		print("Loading test data from path = {}".format(test_pkl_path))
+		test_ratings = pickle.load(open(test_pkl_path, "rb"))
+	else:
+		print("Loading test data from path = {}".format(TEST_DATA))
+		test_ratings = load_data(path_dataset=TEST_DATA)
+		pickle.dump(test_ratings, open(test_pkl_path, "wb"))
+
+	train, test = split_data(ratings=train_ratings)
+	
+	return train_ratings, test_ratings, train, test
+
+
 def help_and_exit(err):
 	print(err)
 	print("[help]: python run.py -m <model name(s) separated by commas>")
@@ -52,84 +104,6 @@ def get_selected_models(argv):
 	return selected_models
 
 
-def load_data_from_pkl():
-	"""
-	Pickle train and test data
-	"""
-	train_pkl_path = PICKLE_PATH + "train.pkl"
-	test_pkl_path = PICKLE_PATH + "test.pkl"
-	train_split_pkl_path = PICKLE_PATH + "train_split.pkl"
-	test_split_pkl_path = PICKLE_PATH + "test_split.pkl"
-
-	if os.path.exists(train_pkl_path):
-		training_data_pkl = open(train_pkl_path, "rb")
-		testing_data_pkl = open(test_pkl_path, "rb")
-
-		print("Loading train data from path = {}".format(TRAIN_DATA))
-		train_ratings = pickle.load(training_data_pkl)
-		print("Loading test data from path = {}".format(TEST_DATA))
-		test_ratings = pickle.load(testing_data_pkl)
-
-		train_pkl = open(train_split_pkl_path, "rb")
-		test_pkl = open(test_split_pkl_path, "rb")
-
-		train = pickle.load(train_pkl)
-		test = pickle.load(test_pkl)
-
-	else:
-		print("Loading train data from path = {}".format(TRAIN_DATA))
-		train_ratings = load_data(path_dataset=TRAIN_DATA)
-		print("Loading test data from path = {}".format(TEST_DATA))
-		test_ratings = load_data(path_dataset=TEST_DATA)
-
-		train, test = split_data(ratings=train_ratings)
-
-		train_data_pkl = open(train_pkl_path, "wb")
-		test_data_pkl = open(test_pkl_path, "wb")
-
-		pickle.dump(train_ratings, train_data_pkl)
-		pickle.dump(test_ratings, test_data_pkl)
-
-		train_pkl = open(train_split_pkl_path, "wb")
-		test_pkl = open(test_split_pkl_path, "wb")
-
-		pickle.dump(train, train_pkl)
-		pickle.dump(test, test_pkl)
-	
-	return train_ratings, test_ratings, train, test
-
-
-def run_model(selected_models, train, test, test_ratings, use_pkls=True):
-	"""
-	Run the selected model
-	"""
-	output_file = ""
-	prediction_pkl_path = PICKLE_PATH + "predictions.pkl"
-	predictions = {}
-
-	if os.path.exists(prediction_pkl_path):
-		print("=======================================================")
-		print("Loading predictions")
-		predictions_pkl = open(prediction_pkl_path, "rb")
-		predictions = pickle.load(predictions_pkl)
-	else:
-		for selected_model in selected_models:
-			print("=======================================================")
-			print("Running model = {}".format(model))
-			predictions[selected_model] = get_predictions(
-				selected_model,
-				train,
-				test,
-				test_ratings)
-			output_file = PREDICTIONS_PATH + "output_" + selected_model + ".csv"
-			create_csv_submission(TEST_DATA, output_file, predictions[selected_model])
-
-		predictions_pkl = open(prediction_pkl_path, "wb")
-		pickle.dump(predictions, predictions_pkl)
-
-	return predictions
-
-
 def main(argv):
 	print("=======================================================")
 	print("Starting Recommender")
@@ -140,15 +114,15 @@ def main(argv):
 
 	start = time.time()
 
-	train_ratings, test_ratings, train, test = load_data_from_pkl()
+	train_ratings, test_ratings, train, test = get_data()
 
-	predictions = run_model(selected_models, train, test, test_ratings, use_pkls=True)
+	predictions = run_models(selected_models, train, test, test_ratings)
 	
 	print("=======================================================")
 	print("Blending models")
 	print("=======================================================")
 
-	coeffs = blend(train, predictions)
+	coeffs = blend(train_ratings, predictions)
 		
 	print("=======================================================")
 	print("Finished Running Recommender")
