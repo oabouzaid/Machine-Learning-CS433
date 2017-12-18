@@ -1,64 +1,67 @@
-import os.path
-from math import sqrt
-import numpy as np
+from helpers import *
 
-def blend(train_data, predictions):
 
-	joint_file = "./data/train_predictions.csv"
+JOINT_FILE = "./predictions/train_predictions.csv"
 
-	create_predictions(train_data, predictions, joint_file)
 
-	trainX, trainY, methods = load_predictions(joint_file)
+def blend(train_ratings, predictions):
+	create_predictions(train_ratings, predictions)
+
+	trainX, trainY, models = load_predictions(joint_file)
 	
-	rmse, weights = least_squares(trainX, trainY)
+	blended_rmse, weights = least_squares(trainX, trainY)
 
 	print("Blended RMSE: {s}".format(s=rmse))
 	print("Weights: " + " ".join(str(x) for x in weights))
 
 	coeffs = {}
-
-	for i in range(len(methods)):
-		coeffs[methods[i]] = weights[i]
+	for i in range(len(models)):
+		coeffs[models[i]] = weights[i]
 
 	print("Coefficients: " + str(coeffs))
 
 	return coeffs
 
 
-def create_predictions(train_data, predictions, joint_file):
+def create_predictions(train_ratings, predictions):
 	"""
 	Create a joint data file including the training data and their
 	corresponing predictions
 	"""
 
+	global JOINT_FILE
+
 	# if predictions are already created, skip
-	if os.path.exists(joint_file):
+	if os.path.exists(JOINT_FILE):
 		return
 
+	file = open(JOINT_FILE, "w")
+
 	# write header row
-	file = open(joint_file, "w")
-	file.write("Id,Prediction")
-
-	# write each method name to header row
-	models = list(predictions.keys())
-
-	for i in range(len(models)):
-		file.write("," + models[i])
-
+	header = "Id,Prediction," + ",".join(predictions.keys())
+	file.write(header)
 	file.write("\n")
 
-	rows, cols = train_data.nonzero()
+	rows, cols = train_ratings.nonzero()
 	idx = list(zip(rows, cols))
 
 	# write each true rating and predicted rating
-	for movie, user in idx:
-		line = "r" + str(movie) + "_c" + str(user) + ","
-		rating_value = str(train_data[movie, user])
-		file.write(line + rating_value)
+	models = list(predictions.keys())
+	line = []
+	for item, user in idx:
+		user_item_id = "r" + str(item) + "_" + "c" + str(user)
+		rating = str(train_ratings[item, user])
+
+		line.append(user_item_id)
+		line.append(rating)
 
 		for model in models:
-			file.write("," + str(predictions[model][movie, user]))
+			model_predictions = str(predictions[model][item, user])
+			line.append(model_predictions)
 
+		line = ",".join(line)
+
+		file.write(line)
 		file.write("\n")
 
 	file.close()
@@ -81,14 +84,14 @@ def load_predictions(data_file):
 
 	return trainX, trainY, methods
 
+
 def least_squares(trainX, trainY):
 	"""
 	Calculate the least squares solution to generate weights
 	for each method
 	"""
 	w = np.linalg.solve(trainX.T.dot(trainX), trainX.T.dot(trainY))    
-	rmse = sqrt(np.average((trainY - np.dot(trainX, w)) * (trainY - np.dot(trainX, w))))
-
+	blended_rmse = sqrt(np.average((trainY - np.dot(trainX, w)) * (trainY - np.dot(trainX, w))))
 	weights = np.ravel(w)
 
-	return rmse, weights
+	return blended_rmse, weights
