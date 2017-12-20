@@ -7,6 +7,7 @@ def create_csv_submission(test_data_path, output_path, predictions):
     def deal_line(line):
         row_col_id, _ = line.split(',')
         row, col = row_col_id.split("_")
+        # row contains user and column contains item
         row = row.replace("r", "")
         col = col.replace("c", "")
         return int(row)-1, int(col)-1, row_col_id
@@ -20,8 +21,8 @@ def create_csv_submission(test_data_path, output_path, predictions):
         writer = csv.DictWriter(f_out, delimiter=",", fieldnames=fieldnames)
         writer.writeheader()
         for line in test_data:
-            item, user, user_item_id = deal_line(line)
-            prediction = predictions[item, user]
+            user, item, user_item_id = deal_line(line)
+            prediction = predictions[user, item]
             writer.writerow({
                 fieldnames[0]: user_item_id,
                 fieldnames[1]: prediction
@@ -37,19 +38,19 @@ def split_data(ratings, split=0.1, seed=998):
     # set seed
     np.random.seed(988)
 
-    nz_items, nz_users = ratings.nonzero()
+    nz_users, nz_items = ratings.nonzero()
 
     # create sparse matrices to store the data
     num_rows, num_cols = ratings.shape
     train = sp.lil_matrix((num_rows, num_cols))
     test = sp.lil_matrix((num_rows, num_cols))
 
-    for user in set(nz_users):
-        row, col = ratings[:, user].nonzero()
+    for item in set(nz_items):
+        row, col = ratings[:, item].nonzero()
         selects = np.random.choice(row, size=int(len(row) * split))
         non_selects = list(set(row) - set(selects))
 
-        train[non_selects, user] = ratings[non_selects, user]
-        test[selects, user] = ratings[selects, user]
+        train[non_selects, item] = ratings[non_selects, item]
+        test[selects, item] = ratings[selects, item]
         
     return train, test

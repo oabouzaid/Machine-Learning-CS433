@@ -26,6 +26,7 @@ def preprocess_data(data):
     def deal_line(line):
         pos, rating = line.split(',')
         row, col = pos.split("_")
+        # row contains user and column contains item
         row = row.replace("r", "")
         col = col.replace("c", "")
         return int(row), int(col), float(rating)
@@ -40,7 +41,7 @@ def preprocess_data(data):
 
     # do statistics on the dataset.
     min_row, max_row, min_col, max_col = statistics(data)
-    print("number of items: {}, number of users: {}".format(max_row, max_col))
+    print("number of users: {}, number of items: {}".format(max_row, max_col))
 
     # build rating matrix.
     ratings = sp.lil_matrix((max_row, max_col))
