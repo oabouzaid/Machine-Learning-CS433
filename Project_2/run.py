@@ -19,7 +19,7 @@ models = {
 	"item_mean": calculate_item_mean,
 	"item_median": calculate_item_median,
 	"als": calculate_als,
-	"sgd": calculate_SGD,
+	"sgd": calculate_sgd,
 
 }
 

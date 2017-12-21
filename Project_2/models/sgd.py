@@ -2,14 +2,14 @@ from helpers import *
 from models.als import *
 
 
-def calculate_SGD(train, test, test_ratings=0):
+def calculate_sgd(train, test, test_ratings):
     """matrix factorization by SGD."""
     # define parameters
     gamma = 0.01
     num_features = 15   # K in the lecture notes
     lambda_users = [.1]  #[29.5, 30.5, 31.0, 31.5, 32] #31.8553 was best for ALS
     lambda_items = [.007]  #[19.5, 20.0, 20.5, 21.0, 21.5] #20.05672522 was best for ALS
-    num_epochs = 1     # number of full passes through the train set
+    num_epochs = 20     # number of full passes through the train set
     errors = [0]
     
     # set seed
@@ -54,8 +54,8 @@ def calculate_SGD(train, test, test_ratings=0):
                 errors.append(rmse)
 
     # evaluate the test error
-            rmse = compute_error(test, user_features, item_features, nz_test)
-            print("RMSE on test data: {}.".format(rmse))  
+            # rmse = compute_error(test, user_features, item_features, nz_test)
+            # print("RMSE on test data: {}.".format(rmse))  
 
     num_users = test_ratings.shape[0]
     num_items = test_ratings.shape[1]

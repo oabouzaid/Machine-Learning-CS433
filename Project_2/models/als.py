@@ -76,7 +76,7 @@ def compute_error(data, user_features, item_features, nz):
 	return np.sqrt(mse/len(nz))
 
 
-def calculate_als(train, test, test_ratings, seed=988, num_features=8, m_iter=10, lambda_user=1., lambda_item=0.007, change=1, stop_criterion=1e-4):
+def calculate_als(train, test, test_ratings, seed=988, num_features=15, m_iter=10, lambda_user=1., lambda_item=0.007, change=1, stop_criterion=1e-4):
 	"""
 	Use Alternating Least Squares (ALS) algorithm to generate predictions
 	"""
