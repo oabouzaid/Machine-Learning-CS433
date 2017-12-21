@@ -15,9 +15,6 @@ def calculate_global_mean(train, test, test_ratings):
 
     # calculate rmse between the training-test and the global mean
     mse = calculate_mse(test_nz, global_mean)
-    print(train_nz.shape)
-    print("global_mean = {}".format(global_mean))
-    print("HERE = {}".format(test_nz.shape))
     rmse = np.sqrt(1.0 * mse/test_nz.shape[1])
     
     print("Test RMSE using the Global Mean: {s}".format(s=rmse))
