@@ -6,10 +6,10 @@ import sys
 from blender import *
 from data_helpers import *
 from helpers import *
-from models.als import *
 from models.means import *
 from models.medians import *
-
+from models.als import *
+from models.sgd import *
 
 models = {
 	"global_mean": calculate_global_mean,
@@ -18,7 +18,9 @@ models = {
 	"user_median": calculate_user_median,
 	"item_mean": calculate_item_mean,
 	"item_median": calculate_item_median,
-	"als": calculate_als
+	"als": calculate_als,
+	"sgd": calculate_SGD,
+
 }
 
 PICKLE_PATH = "./pickles/"
