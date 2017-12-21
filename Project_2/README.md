@@ -15,15 +15,18 @@ Karunya Tota (karunya.tota@epfl.ch)
 **Kaggle Rank & RMSE:**
 <br />
 
-
 **Instructions to Run:**
 <br />
-* To reproduce the results of our code and create a blended results submission, type **python3 run.py**. This generates our predictions by calculating the weights for all of our models (global_mean, global_median, user_mean, user_median, item_mean, item_median, als, sgd). Each model's predictions are pickeled in the 'predictions' directory. However, if a particular model does not exist, our program will rerun the function and generate the predictions for that model. 
+* To reproduce the results of our code and create a blended results submission, type **'python3 run.py'**. This generates our predictions by calculating the weights for all of our models (global_mean, global_median, user_mean, user_median, item_mean, item_median, als, sgd). Each model's predictions are pickeled in the 'predictions' directory. However, if a particular model does not exist, our program will rerun the function and generate the predictions for that model. 
 
-* In order to run a particular model, type **python3 run.py -m <model name(s) separated by commas>**
+* In order to run a particular model, type **'python3 run.py -m <model name(s) separated by commas>'**
 
-* For help, type **python3 run.py -h**
+* For help, type **'python3 run.py -h'**
 
+
+**Estimated Runtime:**
+<br />
+70.49514971574148 minutes
 
 **Important Files**
 * 'run.py' contains all of our code for parsing command line arguments and running the selected models. If no choice of models is given, the default option is to run all 8 methods and generate predictions. This file also performs the operations to read in training and testing data and generate splits on the training dataset.
