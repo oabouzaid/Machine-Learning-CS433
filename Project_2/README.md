@@ -12,9 +12,6 @@ Gaurav Pasari (gaurav.pasari@epfl.ch)
 <br />
 Karunya Tota (karunya.tota@epfl.ch)
 
-**Kaggle Rank & RMSE:**
-<br />
-
 **Instructions to Run:**
 <br />
 * To reproduce the results of our code and create a blended results submission, type **'python3 run.py'**. This generates our predictions by calculating the weights for all of our models (global_mean, global_median, user_mean, user_median, item_mean, item_median, als, sgd). Each model's predictions are pickeled in the 'predictions' directory. However, if a particular model does not exist, our program will rerun the function and generate the predictions for that model. 
