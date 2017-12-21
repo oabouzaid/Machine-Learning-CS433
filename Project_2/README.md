@@ -26,7 +26,7 @@ Karunya Tota (karunya.tota@epfl.ch)
 
 **Estimated Runtime:**
 <br />
-70.49514971574148 minutes
+~70 minutes
 
 **Important Files**
 * 'run.py' contains all of our code for parsing command line arguments and running the selected models. If no choice of models is given, the default option is to run all 8 methods and generate predictions. This file also performs the operations to read in training and testing data and generate splits on the training dataset.
