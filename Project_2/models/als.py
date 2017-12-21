@@ -3,7 +3,6 @@ from helpers import *
 
 def init_MF(train, num_features):
 	""" 
-	TODO: REVIEW AND CHANGE
 	Source: Lab 10 Solutions
 	Init the parameter for matrix factorization 
 	"""
@@ -12,7 +11,7 @@ def init_MF(train, num_features):
 	user_features = np.random.rand(num_features, num_users)
 	item_features = np.random.rand(num_features, num_items)
 
-	# get the sum of every item's ratings
+	# Sum up each ratings for each movie 
 	item_sum = train.sum(axis=0)
 	item_nnz = train.getnnz(axis=0)
 	
@@ -25,7 +24,7 @@ def init_MF(train, num_features):
 
 def update_user_feature(train, item_features, num_features, lambda_user, nz_user_itemindices):
 	"""
-	Update user feature matrix
+	Helper function that updates the user-feature matrix Z
 	"""
 	num_users = train.shape[0]
 	user_features = np.zeros((num_features, num_users))
@@ -45,7 +44,7 @@ def update_user_feature(train, item_features, num_features, lambda_user, nz_user
 
 def update_item_feature(train, user_features, num_features, lambda_item, nz_item_userindices):
 	"""
-	Update item feature matrix
+	Update item-feature matrix W
 	"""
 	num_items = train.shape[1]
 	item_features = np.zeros((num_features, num_items))
@@ -77,25 +76,23 @@ def compute_error(data, user_features, item_features, nz):
 	return np.sqrt(mse/len(nz))
 
 
-def calculate_als(train, test, test_ratings, seed=988, num_features=8, m_iter=30, lambda_user=31.8553, lambda_item=20.05672522, change=1, stop_criterion=1e-4):
+def calculate_als(train, test, test_ratings, seed=988, num_features=8, m_iter=10, lambda_user=1., lambda_item=0.007, change=1, stop_criterion=1e-4):
 	"""
 	Use Alternating Least Squares (ALS) algorithm to generate predictions
 	"""
 	error_list = [0]
 	itr = 0
-	
-	# set seed
 	np.random.seed(seed)
 
-	# initialize the matrix factorization
+	# Initialize W and Z with random small numbers
 	user_features, item_features = init_MF(train, num_features)
 	
-	# group the indices by row or column index
+	# Group the indices by row or column index
 	nz_train, nz_user_itemindices, nz_item_userindices = build_index_groups(train)
 	
-	print("Starting ALS")
 	while change > stop_criterion and itr < m_iter:
-		# update user features & item features
+		
+		# Update W and Z
 		user_features = update_user_feature(train, item_features, num_features, lambda_user, nz_user_itemindices)
 		item_features = update_item_feature(train, user_features, num_features, lambda_item, nz_item_userindices)
 
@@ -104,9 +101,9 @@ def calculate_als(train, test, test_ratings, seed=988, num_features=8, m_iter=30
 	
 		change = np.fabs(rmse - error_list[-1])
 		error_list.append(rmse)
-		itr += 1
+		itr = itr + 1
 	
-	# evaluate the test error
+	# Calculate the RMSE
 	nnz_row, nnz_col = test.nonzero()
 	nnz_test = list(zip(nnz_row, nnz_col))
 	rmse = compute_error(test, user_features, item_features, nnz_test)
@@ -116,6 +113,7 @@ def calculate_als(train, test, test_ratings, seed=988, num_features=8, m_iter=30
 	num_items = test_ratings.shape[1]
 	pred_als = sp.lil_matrix((num_users, num_items))
 	
+	# Multiply the 2 matrices to get X 
 	for user in range(num_users):
 		for item in range(num_items):
 			item_info = item_features[:, item]
